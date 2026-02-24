@@ -208,7 +208,7 @@ The "Marketing Costs" section shows:
 
 ### 7.1 Monthly cash flow bars
 
-Three horizontal bars (Revenue, Total Expenses, Net Profit), with lengths as a percentage of the larger of Monthly Revenue and Total Monthly Expenses.
+Three horizontal bars (Revenue, Total Expenses, Net Profit), with lengths as a percentage of the larger of Monthly Revenue and Total Monthly Expenses
 
 **Formulas:**
 
@@ -248,9 +248,9 @@ Total Revenue = Total Plan Revenue + Total Add-on Revenue
 
 **Percentages:**
 
-- Plan revenue % = (Total Plan Revenue / Total Revenue) × 100  
-- Add-on revenue % = (Total Add-on Revenue / Total Revenue) × 100  
-- Per plan: `(plan.price × plan.customers) / Total Revenue × 100`  
+- Plan revenue % = (Total Plan Revenue / Total Revenue) × 100
+- Add-on revenue % = (Total Add-on Revenue / Total Revenue) × 100
+- Per plan: `(plan.price × plan.customers) / Total Revenue × 100`
 - Per add-on: `(addon.price × addon.customers) / Total Revenue × 100`
 
 ---
@@ -272,15 +272,15 @@ The amounts shown are **Monthly Operating Expenses** and **Monthly Marketing Exp
 
 ## Summary of data flow
 
-| Metric                         | Source / formula                                                                 |
-|--------------------------------|-----------------------------------------------------------------------------------|
-| Monthly Revenue                | Plans (price×customers) + revenue add-ons (price×customers)                      |
-| Monthly Operating Expenses     | Fixed/variable operating costs + add-on (operating_cost_per_customer×customers)  |
-| Monthly Marketing Expenses     | Σ plan_price×customers×(rate/100); plan price by name (99/382/655)              |
-| Total Monthly Expenses         | Operating + Marketing                                                            |
-| Monthly Profit                 | Revenue − Total Monthly Expenses                                                 |
-| Break-even Months              | Capital Expenditure / Monthly Profit (or 0)                                      |
-| Annual Revenue / Operating / Marketing | Monthly × 12                                                             |
-| Annual Profit (Net Annual Cash Flow)   | Annual Revenue − Annual Operating − Annual Marketing − Capital Expenditure |
+| Metric                                 | Source / formula                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| Monthly Revenue                        | Plans (price×customers) + revenue add-ons (price×customers)                     |
+| Monthly Operating Expenses             | Fixed/variable operating costs + add-on (operating_cost_per_customer×customers) |
+| Monthly Marketing Expenses             | Σ plan_price×customers×(rate/100); plan price by name (99/382/655)              |
+| Total Monthly Expenses                 | Operating + Marketing                                                           |
+| Monthly Profit                         | Revenue − Total Monthly Expenses                                                |
+| Break-even Months                      | Capital Expenditure / Monthly Profit (or 0)                                     |
+| Annual Revenue / Operating / Marketing | Monthly × 12                                                                    |
+| Annual Profit (Net Annual Cash Flow)   | Annual Revenue − Annual Operating − Annual Marketing − Capital Expenditure      |
 
 All numbers shown on the landing screen derive from these calculations and the current scenario’s plans, add-ons, operating costs, marketing costs, and capital expenditure.
