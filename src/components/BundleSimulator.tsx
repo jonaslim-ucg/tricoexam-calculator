@@ -95,15 +95,35 @@ export default function BundleSimulator({ scenarioId, onBack }: BundleSimulatorP
         techSupportRevenue,
         [],
         [],
-        [],
-        { additional_provider_price: 0, additional_provider_quantity: 0, automation_price_per_1000: 0, automation_overage_thousands: 0 }
+        { additional_provider_price: 0, additional_provider_quantity: 0, automation_price_per_1000: 0, automation_overage_thousands: 0 },
+        []
       )
     : null;
 
-  if (loading || !scenario) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!scenario) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <p className="text-slate-700 font-medium mb-2">Scenario not found or failed to load</p>
+          <p className="text-sm text-slate-500 mb-4">
+            Check your connection and that the scenario exists. You can go back and try another scenario.
+          </p>
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useForecastData } from '../hooks/useForecastData';
 import { calculateMetrics } from '../utils/calculations';
 import DashboardHeader from './DashboardHeader';
 import RevenueSection from './RevenueSection';
+import OnboardingServicesCard from './OnboardingServicesCard';
 import OperatingCostsSection from './OperatingCostsSection';
 import MarketingCostsSection from './MarketingCostsSection';
 import SummarySection from './SummarySection';
@@ -17,7 +18,20 @@ interface DashboardProps {
 export default function Dashboard({ onSimulateClick }: DashboardProps) {
   const [scenarios, setScenarios] = useState<ForecastScenario[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-  const { scenario, pricingPlans, addOnFeatures, operatingCosts, marketingCosts, techSupportRevenue, loading, reload } = useForecastData(selectedScenarioId);
+  const {
+    scenario,
+    pricingPlans,
+    addOnFeatures,
+    operatingCosts,
+    marketingCosts,
+    techSupportRevenue,
+    planAddonRows: loadedPlanAddonRows,
+    surgicalTierRows: loadedSurgicalTierRows,
+    surgicalExtras: loadedSurgicalExtras,
+    onboardingRows: loadedOnboardingRows,
+    loading,
+    reload,
+  } = useForecastData(selectedScenarioId);
 
   function defaultTechSupportForPlan(planName: string) {
     const n = planName.toLowerCase();
@@ -141,16 +155,128 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
   }, [pricingPlans, techSupportRevenue]);
 
   useEffect(() => {
-    setPlanAddonRows(buildPlanAddonRows(pricingPlans));
-  }, [pricingPlans]);
+    if (loadedPlanAddonRows.length > 0) {
+      setPlanAddonRows(loadedPlanAddonRows);
+    } else {
+      setPlanAddonRows(buildPlanAddonRows(pricingPlans));
+    }
+  }, [pricingPlans, loadedPlanAddonRows]);
 
   useEffect(() => {
-    setSurgicalTierRows(buildSurgicalTierRows(pricingPlans));
-  }, [pricingPlans]);
+    if (loadedSurgicalTierRows.length > 0) {
+      setSurgicalTierRows(loadedSurgicalTierRows);
+    } else {
+      setSurgicalTierRows(buildSurgicalTierRows(pricingPlans));
+    }
+  }, [pricingPlans, loadedSurgicalTierRows]);
 
   useEffect(() => {
-    setOnboardingRows(buildOnboardingRows(pricingPlans));
-  }, [pricingPlans]);
+    if (loadedSurgicalExtras != null) {
+      setSurgicalExtras(loadedSurgicalExtras);
+    } else {
+      setSurgicalExtras({
+        additional_provider_price: 75,
+        additional_provider_quantity: 0,
+        automation_price_per_1000: 25,
+        automation_overage_thousands: 0,
+      });
+    }
+  }, [loadedSurgicalExtras]);
+
+  useEffect(() => {
+    if (loadedOnboardingRows.length > 0) {
+      setOnboardingRows(loadedOnboardingRows);
+    } else {
+      setOnboardingRows(buildOnboardingRows(pricingPlans));
+    }
+  }, [pricingPlans, loadedOnboardingRows]);
+
+  async function persistPlanAddonRows(rows: PlanAddonRow[]) {
+    if (!selectedScenarioId) return;
+    try {
+      await supabase.from('plan_addon_rows').delete().eq('scenario_id', selectedScenarioId);
+      if (rows.length) {
+        await supabase.from('plan_addon_rows').insert(
+          rows.map((r) => ({
+            scenario_id: selectedScenarioId,
+            plan_id: r.plan_id,
+            plan_name: r.plan_name,
+            addon_type: r.addon_type,
+            price: r.price,
+            quantity: r.quantity,
+          }))
+        );
+      }
+      reload();
+    } catch (e) {
+      console.warn('Persist plan_addon_rows failed (table may not exist yet):', e);
+    }
+  }
+
+  async function persistSurgicalTierRows(rows: SurgicalTierRow[]) {
+    if (!selectedScenarioId) return;
+    try {
+      await supabase.from('surgical_tier_rows').delete().eq('scenario_id', selectedScenarioId);
+      if (rows.length) {
+        await supabase.from('surgical_tier_rows').insert(
+          rows.map((r) => ({
+            scenario_id: selectedScenarioId,
+            plan_id: r.plan_id,
+            plan_name: r.plan_name,
+            base_price: r.base_price,
+            tier_key: r.tier_key,
+            addon_price: r.addon_price,
+            customers: r.customers,
+          }))
+        );
+      }
+      reload();
+    } catch (e) {
+      console.warn('Persist surgical_tier_rows failed (table may not exist yet):', e);
+    }
+  }
+
+  async function persistSurgicalExtras(extras: SurgicalExtras) {
+    if (!selectedScenarioId) return;
+    try {
+      await supabase.from('surgical_extras').upsert(
+        {
+          scenario_id: selectedScenarioId,
+          additional_provider_price: extras.additional_provider_price,
+          additional_provider_quantity: extras.additional_provider_quantity,
+          automation_price_per_1000: extras.automation_price_per_1000,
+          automation_overage_thousands: extras.automation_overage_thousands,
+        },
+        { onConflict: 'scenario_id' }
+      );
+      reload();
+    } catch (e) {
+      console.warn('Persist surgical_extras failed (table may not exist yet):', e);
+    }
+  }
+
+  async function persistOnboardingRows(rows: OnboardingRow[]) {
+    if (!selectedScenarioId) return;
+    try {
+      await supabase.from('onboarding_rows').delete().eq('scenario_id', selectedScenarioId);
+      if (rows.length) {
+        await supabase.from('onboarding_rows').insert(
+          rows.map((r) => ({
+            scenario_id: selectedScenarioId,
+            plan_id: r.plan_id,
+            plan_name: r.plan_name,
+            upgrade_type: r.upgrade_type,
+            price: r.price,
+            customers: r.customers,
+            delivery_cost: r.delivery_cost ?? null,
+          }))
+        );
+      }
+      reload();
+    } catch (e) {
+      console.warn('Persist onboarding_rows failed (table may not exist yet):', e);
+    }
+  }
 
   async function loadScenarios() {
     const { data } = await supabase
@@ -160,9 +286,10 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
 
     if (data && data.length > 0) {
       setScenarios(data);
-      if (!selectedScenarioId) {
-        setSelectedScenarioId(data[0].id);
-      }
+      setSelectedScenarioId((prev) => {
+        const valid = prev && data.some((s) => s.id === prev);
+        return valid ? prev : data[0].id;
+      });
     }
   }
 
@@ -215,6 +342,59 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
         );
       }
       await supabase.from('tech_support_revenue').insert(techRows);
+
+      const planList = insertedPlans.map((p) => ({ id: p.id, name: p.name }));
+      const planAddonDefaults = buildPlanAddonRows(planList);
+      const surgicalTierDefaults = buildSurgicalTierRows(planList);
+      const onboardingDefaults = buildOnboardingRows(planList);
+
+      await Promise.allSettled([
+        planAddonDefaults.length
+          ? supabase.from('plan_addon_rows').insert(
+              planAddonDefaults.map((r) => ({
+                scenario_id: scenarioId,
+                plan_id: r.plan_id,
+                plan_name: r.plan_name,
+                addon_type: r.addon_type,
+                price: r.price,
+                quantity: r.quantity,
+              }))
+            )
+          : Promise.resolve(),
+        surgicalTierDefaults.length
+          ? supabase.from('surgical_tier_rows').insert(
+              surgicalTierDefaults.map((r) => ({
+                scenario_id: scenarioId,
+                plan_id: r.plan_id,
+                plan_name: r.plan_name,
+                base_price: r.base_price,
+                tier_key: r.tier_key,
+                addon_price: r.addon_price,
+                customers: r.customers,
+              }))
+            )
+          : Promise.resolve(),
+        supabase.from('surgical_extras').insert({
+          scenario_id: scenarioId,
+          additional_provider_price: 75,
+          additional_provider_quantity: 0,
+          automation_price_per_1000: 25,
+          automation_overage_thousands: 0,
+        }),
+        onboardingDefaults.length
+          ? supabase.from('onboarding_rows').insert(
+              onboardingDefaults.map((r) => ({
+                scenario_id: scenarioId,
+                plan_id: r.plan_id,
+                plan_name: r.plan_name,
+                upgrade_type: r.upgrade_type,
+                price: r.price,
+                customers: r.customers,
+                delivery_cost: r.delivery_cost ?? null,
+              }))
+            )
+          : Promise.resolve(),
+      ]);
     }
 
     await Promise.all([
@@ -248,31 +428,94 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
   }
 
   function updatePlanAddonRow(planId: string, addonType: 'additional_staff' | 'additional_provider', field: keyof Pick<PlanAddonRow, 'price' | 'quantity'>, value: number) {
-    setPlanAddonRows((prev) =>
-      prev.map((row) => (row.plan_id === planId && row.addon_type === addonType ? { ...row, [field]: value } : row))
-    );
+    setPlanAddonRows((prev) => {
+      const next = prev.map((row) => (row.plan_id === planId && row.addon_type === addonType ? { ...row, [field]: value } : row));
+      persistPlanAddonRows(next);
+      return next;
+    });
   }
 
   function updateSurgicalTierRow(planId: string, tierKey: SurgicalTierKey, field: keyof Pick<SurgicalTierRow, 'base_price' | 'addon_price' | 'customers'>, value: number) {
-    setSurgicalTierRows((prev) =>
-      prev.map((row) => (row.plan_id === planId && row.tier_key === tierKey ? { ...row, [field]: value } : row))
-    );
+    setSurgicalTierRows((prev) => {
+      const next = prev.map((row) => (row.plan_id === planId && row.tier_key === tierKey ? { ...row, [field]: value } : row));
+      persistSurgicalTierRows(next);
+      return next;
+    });
   }
 
   function updateSurgicalBasePrice(planId: string, value: number) {
-    setSurgicalTierRows((prev) =>
-      prev.map((row) => (row.plan_id === planId ? { ...row, base_price: value } : row))
-    );
+    setSurgicalTierRows((prev) => {
+      const next = prev.map((row) => (row.plan_id === planId ? { ...row, base_price: value } : row));
+      persistSurgicalTierRows(next);
+      return next;
+    });
   }
 
   function updateSurgicalExtras(field: keyof SurgicalExtras, value: number) {
-    setSurgicalExtras((prev) => ({ ...prev, [field]: value }));
+    setSurgicalExtras((prev) => {
+      const next = { ...prev, [field]: value };
+      persistSurgicalExtras(next);
+      return next;
+    });
   }
 
-  function updateOnboardingRow(planId: string, upgradeType: 'session' | 'bundle', field: keyof Pick<OnboardingRow, 'price' | 'customers'>, value: number) {
-    setOnboardingRows((prev) =>
-      prev.map((row) => (row.plan_id === planId && row.upgrade_type === upgradeType ? { ...row, [field]: value } : row))
-    );
+  function updateOnboardingRow(
+    planId: string,
+    upgradeType: 'session' | 'bundle',
+    field: keyof Pick<OnboardingRow, 'price' | 'customers' | 'plan_name' | 'delivery_cost'>,
+    value: number | string
+  ) {
+    setOnboardingRows((prev) => {
+      const next = prev.map((row) =>
+        row.plan_id === planId && row.upgrade_type === upgradeType ? { ...row, [field]: value } : row
+      );
+      persistOnboardingRows(next);
+      return next;
+    });
+  }
+
+  function deleteOnboardingRow(planId: string, upgradeType: 'session' | 'bundle') {
+    setOnboardingRows((prev) => {
+      const next = prev.filter((row) => !(row.plan_id === planId && row.upgrade_type === upgradeType));
+      persistOnboardingRows(next);
+      return next;
+    });
+  }
+
+  function addOnboardingSession() {
+    setOnboardingRows((prev) => {
+      const next = [
+        ...prev,
+        {
+          plan_id: `custom-session-${Date.now()}`,
+          plan_name: 'New Session',
+          upgrade_type: 'session' as const,
+          price: 299,
+          customers: 0,
+          delivery_cost: 125,
+        },
+      ];
+      persistOnboardingRows(next);
+      return next;
+    });
+  }
+
+  function addOnboardingBundle() {
+    setOnboardingRows((prev) => {
+      const next = [
+        ...prev,
+        {
+          plan_id: `custom-bundle-${Date.now()}`,
+          plan_name: 'New Bundle',
+          upgrade_type: 'bundle' as const,
+          price: 799,
+          customers: 0,
+          delivery_cost: 375,
+        },
+      ];
+      persistOnboardingRows(next);
+      return next;
+    });
   }
 
   const calculations = scenario
@@ -326,7 +569,12 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
       />
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {calculations && <SummarySection calculations={calculations} />}
+        {calculations && (
+          <SummarySection
+            calculations={calculations}
+            onboardingRows={onboardingRows}
+          />
+        )}
 
         <RevenueSection
           scenarioId={selectedScenarioId!}
@@ -342,8 +590,15 @@ export default function Dashboard({ onSimulateClick }: DashboardProps) {
           surgicalExtras={surgicalExtras}
           onUpdateSurgicalExtras={updateSurgicalExtras}
           onboardingRows={onboardingRows}
-          onUpdateOnboardingRow={updateOnboardingRow}
           onUpdate={reload}
+        />
+
+        <OnboardingServicesCard
+          onboardingRows={onboardingRows}
+          onUpdateOnboardingRow={updateOnboardingRow}
+          onDeleteOnboardingRow={deleteOnboardingRow}
+          onAddSession={addOnboardingSession}
+          onAddBundle={addOnboardingBundle}
         />
 
         <OperatingCostsSection

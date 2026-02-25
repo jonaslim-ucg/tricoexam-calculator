@@ -4,7 +4,6 @@ import {
   Plus,
   Trash2,
   Stethoscope,
-  GraduationCap,
   HardDrive,
   Info,
 } from "lucide-react";
@@ -33,7 +32,8 @@ function InfoTooltip({ content }: { content: string }) {
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const spaceRight = typeof window !== "undefined" ? window.innerWidth - rect.right : 0;
+    const spaceRight =
+      typeof window !== "undefined" ? window.innerWidth - rect.right : 0;
     setAlignRight(spaceRight < TOOLTIP_WIDTH);
   }, [open]);
 
@@ -398,6 +398,29 @@ function PricingPlanCard({
   );
 }
 
+function SurgicalVolumeBadge({ tierKey }: { tierKey: SurgicalTierKey }) {
+  const labels: Record<SurgicalTierKey, string> = {
+    "0-10": "0–10 volume",
+    "11-25": "11–25 volume",
+    "26-50": "26–50 volume",
+    "51-100": "51–100 volume",
+    "100+": "100+ volume",
+  };
+  const isCustom = tierKey === "100+";
+  return (
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold tabular-nums
+        ${
+          isCustom
+            ? "bg-violet-50 text-violet-700 border-violet-200"
+            : "bg-slate-100 text-slate-600 border-slate-200"
+        }`}
+    >
+      {labels[tierKey]}
+    </span>
+  );
+}
+
 function SurgicalPlanCard({
   planId,
   planName,
@@ -431,26 +454,43 @@ function SurgicalPlanCard({
     .filter(Boolean) as SurgicalTierRow[];
   const t = tooltips;
 
+  const planTotal = sorted.reduce(
+    (sum, row) => sum + (row.base_price + row.addon_price) * row.customers,
+    0,
+  );
+
   return (
     <SectionCard>
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-bold text-slate-800">{planName}</span>
-        <NumberField
-          label="Base $/mo"
-          value={basePrice}
-          prefix="$"
-          onChange={(v) => onUpdateBase(planId, v)}
-          tooltip={t?.basePrice}
-        />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-slate-800">{planName}</span>
+          <NumberField
+            label="Base $/mo"
+            value={basePrice}
+            prefix="$"
+            onChange={(v) => onUpdateBase(planId, v)}
+            tooltip={t?.basePrice}
+          />
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+            Plan total
+          </div>
+          <div className="text-sm font-bold text-green-600 tabular-nums">
+            ${planTotal.toLocaleString()}
+          </div>
+        </div>
       </div>
+
       <div className="space-y-2 mt-1">
         {sorted.map((row) => (
-          <div key={row.tier_key} className="flex items-end gap-3">
-            <span className="text-xs font-medium text-slate-500 pb-2 min-w-[5.5rem] tabular-nums">
-              {row.tier_key === "100+"
-                ? "100+ (custom)"
-                : `${row.tier_key} volume`}
-            </span>
+          <div
+            key={row.tier_key}
+            className="flex items-end gap-3 py-1.5 border-b border-slate-100 last:border-0"
+          >
+            <div className="pb-1.5 min-w-[9rem]">
+              <SurgicalVolumeBadge tierKey={row.tier_key} />
+            </div>
             {row.tier_key === "100+" ? (
               <NumberField
                 label="Add-on price"
@@ -460,10 +500,15 @@ function SurgicalPlanCard({
                 tooltip={t?.addonPrice}
               />
             ) : (
-              <div className="flex-1 min-w-[5rem] pb-2">
-                <span className="text-xs text-slate-400">
-                  +${row.addon_price}/mo
-                </span>
+              <div className="flex-1 min-w-[5rem] pb-1.5">
+                <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">
+                  Volume add-on
+                </div>
+                <div className="mt-1 text-sm text-slate-500 font-medium">
+                  {row.addon_price === 0
+                    ? "Included"
+                    : `+$${row.addon_price}/mo`}
+                </div>
               </div>
             )}
             <NumberField
@@ -480,76 +525,6 @@ function SurgicalPlanCard({
           </div>
         ))}
       </div>
-    </SectionCard>
-  );
-}
-
-function OnboardingPlanCard({
-  planId,
-  planName,
-  session,
-  bundle,
-  onUpdate,
-  tooltips,
-}: {
-  planId: string;
-  planName: string;
-  session?: OnboardingRow;
-  bundle?: OnboardingRow;
-  onUpdate: RevenueSectionProps["onUpdateOnboardingRow"];
-  tooltips?: {
-    sessionPrice?: string;
-    sessionCustomers?: string;
-    bundlePrice?: string;
-    bundleCustomers?: string;
-  };
-}) {
-  const t = tooltips;
-  return (
-    <SectionCard>
-      <div className="text-sm font-bold text-slate-800">{planName}</div>
-      {session && (
-        <div className="flex items-end gap-3">
-          <span className="text-xs font-medium text-slate-500 pb-2 min-w-[10rem]">
-            1× 60-min session
-          </span>
-          <NumberField
-            label="Price"
-            value={session.price}
-            prefix="$"
-            onChange={(v) => onUpdate(planId, "session", "price", v)}
-            tooltip={t?.sessionPrice}
-          />
-          <NumberField
-            label="Customers"
-            value={session.customers}
-            onChange={(v) => onUpdate(planId, "session", "customers", v)}
-            tooltip={t?.sessionCustomers}
-          />
-          <RevenueTag amount={session.price * session.customers} />
-        </div>
-      )}
-      {bundle && (
-        <div className="flex items-end gap-3">
-          <span className="text-xs font-medium text-slate-500 pb-2 min-w-[10rem]">
-            3× 60-min bundle
-          </span>
-          <NumberField
-            label="Price"
-            value={bundle.price}
-            prefix="$"
-            onChange={(v) => onUpdate(planId, "bundle", "price", v)}
-            tooltip={t?.bundlePrice}
-          />
-          <NumberField
-            label="Customers"
-            value={bundle.customers}
-            onChange={(v) => onUpdate(planId, "bundle", "customers", v)}
-            tooltip={t?.bundleCustomers}
-          />
-          <RevenueTag amount={bundle.price * bundle.customers} />
-        </div>
-      )}
     </SectionCard>
   );
 }
@@ -650,7 +625,9 @@ const TOOLTIPS = {
       "Custom add-on price for practices performing 100+ surgeries/month. Negotiate based on volume.",
     customers: "Number of customers in this surgery volume tier.",
     additionalProvider:
-      "Each additional surgical provider beyond the plan's included count costs +$75/provider/month.\n\nIncluded: Basic 1, Pro 1, Enterprise 2.",
+      "Monthly price per additional surgical provider beyond the plan's included count.\n\nIncluded: Basic 1, Pro 1, Enterprise 2.\nSuggested: +$75/provider/mo.",
+    additionalProviderQty:
+      "Total additional surgical providers purchased across all customers and plans.",
     automationPer1k:
       "Overage rate for post-op automated emails beyond the 3,000/month included allowance. Suggested: $25 per 1,000 emails.",
     overageThousands:
@@ -730,12 +707,6 @@ interface RevenueSectionProps {
   surgicalExtras: SurgicalExtras;
   onUpdateSurgicalExtras: (field: keyof SurgicalExtras, value: number) => void;
   onboardingRows: OnboardingRow[];
-  onUpdateOnboardingRow: (
-    planId: string,
-    upgradeType: "session" | "bundle",
-    field: keyof Pick<OnboardingRow, "price" | "customers">,
-    value: number,
-  ) => void;
   onUpdate: () => void;
 }
 
@@ -755,7 +726,6 @@ export default function RevenueSection({
   surgicalExtras,
   onUpdateSurgicalExtras,
   onboardingRows,
-  onUpdateOnboardingRow,
   onUpdate,
 }: RevenueSectionProps) {
   async function updatePricingPlan(
@@ -814,7 +784,6 @@ export default function RevenueSection({
 
   const techSupportByPlan = groupBy(techSupportRows, (r) => r.plan_id);
   const surgicalByPlan = groupBy(surgicalTierRows, (r) => r.plan_id);
-  const onboardingByPlan = groupBy(onboardingRows, (r) => r.plan_id);
 
   const surgicalRevenue =
     surgicalTierRows.reduce(
@@ -970,9 +939,13 @@ export default function RevenueSection({
               />
             ))}
 
-            <SectionCard>
+            {/* ── Cross-plan surgical extras ── */}
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-4 space-y-3">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Surgical Pack Extras (all plans)
+              </div>
               <PlanAddonRowComponent
-                label="Additional surgical provider"
+                label="Additional provider"
                 price={surgicalExtras.additional_provider_price}
                 quantity={surgicalExtras.additional_provider_quantity}
                 onPriceChange={(v) =>
@@ -982,7 +955,7 @@ export default function RevenueSection({
                   onUpdateSurgicalExtras("additional_provider_quantity", v)
                 }
                 tooltipPrice={TOOLTIPS.surgical.additionalProvider}
-                tooltipQty={TOOLTIPS.surgical.additionalProvider}
+                tooltipQty={TOOLTIPS.surgical.additionalProviderQty}
               />
               <div className="flex items-end gap-3">
                 <span className="text-xs font-medium text-slate-500 pb-2 min-w-[7rem]">
@@ -1012,32 +985,19 @@ export default function RevenueSection({
                   }
                 />
               </div>
-            </SectionCard>
-          </div>
-        </section>
-      )}
+            </div>
 
-      {/* ── Onboarding ── */}
-      {onboardingRows.length > 0 && (
-        <section>
-          <SectionHeading
-            icon={<GraduationCap className="w-3.5 h-3.5 text-slate-500" />}
-            title="Onboarding Upgrades"
-            description="Basic Onboarding (self-serve) included. Paid upgrades below. Contractor pay is in Operating Costs."
-            tooltip={TOOLTIPS.onboarding.section}
-          />
-          <div className="space-y-3">
-            {Array.from(onboardingByPlan.entries()).map(([planId, rows]) => (
-              <OnboardingPlanCard
-                key={planId}
-                planId={planId}
-                planName={rows[0]?.plan_name ?? planId}
-                session={rows.find((r) => r.upgrade_type === "session")}
-                bundle={rows.find((r) => r.upgrade_type === "bundle")}
-                onUpdate={onUpdateOnboardingRow}
-                tooltips={TOOLTIPS.onboarding}
-              />
-            ))}
+            {/* ── Surgical section subtotal ── */}
+            <div className="flex justify-end pt-1">
+              <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-2 text-right">
+                <div className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">
+                  Surgical Pack Total
+                </div>
+                <div className="text-lg font-extrabold text-green-700 tabular-nums">
+                  ${surgicalRevenue.toLocaleString()}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       )}

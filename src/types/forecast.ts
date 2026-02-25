@@ -45,6 +45,9 @@ export interface MarketingCost {
   rate: number;
   price_plan: string;
   customers: number;
+  /** When present from DB: 'commission' | 'fixed'. Commission uses rate/price_plan/customers; fixed uses fixed_amount. */
+  cost_type?: 'commission' | 'fixed';
+  fixed_amount?: number;
   created_at: string;
 }
 
@@ -100,13 +103,16 @@ export interface SurgicalExtras {
   automation_overage_thousands: number;
 }
 
-/** Onboarding Options: Upgrade 1 (session) and Upgrade 2 (bundle) per plan; contractor pay is operating cost */
+/** Onboarding Options: Upgrade 1 (session) and Upgrade 2 (bundle); rows can be plan-based or custom (named). */
 export interface OnboardingRow {
+  id?: string; // Set when loaded from DB or after insert; used for update/delete
   plan_id: string;
   plan_name: string;
   upgrade_type: 'session' | 'bundle';
   price: number;
   customers: number;
+  /** Per-row delivery cost; when set, overrides the section default. */
+  delivery_cost?: number;
 }
 
 export interface Calculations {

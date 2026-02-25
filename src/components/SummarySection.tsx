@@ -1,12 +1,61 @@
 import { BarChart3, Calendar, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../utils/calculations';
-import type { Calculations } from '../types/forecast';
+import type { Calculations, OnboardingRow } from '../types/forecast';
+
+const SESSION_DELIVERY_DEFAULT = 125;
+const BUNDLE_DELIVERY_DEFAULT = 375;
+
+function OnboardingServicesSummaryCard({ onboardingRows }: { onboardingRows: OnboardingRow[] }) {
+  const sessionRows = onboardingRows.filter((r) => r.upgrade_type === 'session');
+  const bundleRows = onboardingRows.filter((r) => r.upgrade_type === 'bundle');
+  const totalRevenue =
+    sessionRows.reduce((s, r) => s + r.price * r.customers, 0) +
+    bundleRows.reduce((s, r) => s + r.price * r.customers, 0);
+  const totalDeliveryCost =
+    sessionRows.reduce((s, r) => s + SESSION_DELIVERY_DEFAULT * r.customers, 0) +
+    bundleRows.reduce((s, r) => s + BUNDLE_DELIVERY_DEFAULT * r.customers, 0);
+  const totalGrossProfit = totalRevenue - totalDeliveryCost;
+  const marginPct = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+          <DollarSign className="w-5 h-5 text-sky-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Onboarding Services Summary</h2>
+          <p className="text-sm text-slate-500">One-time revenue and costs</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <div className="rounded-lg bg-sky-50 px-4 py-3">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">One-Time Revenue</div>
+          <div className="text-lg font-bold text-slate-900 tabular-nums mt-1">${totalRevenue.toLocaleString()}</div>
+        </div>
+        <div className="rounded-lg bg-sky-50 px-4 py-3">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Delivery Costs</div>
+          <div className="text-lg font-bold text-slate-900 tabular-nums mt-1">${totalDeliveryCost.toLocaleString()}</div>
+        </div>
+        <div className="rounded-lg bg-sky-50 px-4 py-3">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Gross Profit</div>
+          <div className="text-lg font-bold text-green-600 tabular-nums mt-1">${totalGrossProfit.toLocaleString()}</div>
+        </div>
+        <div className="rounded-lg bg-sky-50 px-4 py-3">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Margin</div>
+          <div className="text-lg font-bold text-slate-900 tabular-nums mt-1">{marginPct.toFixed(1)}%</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface SummarySectionProps {
   calculations: Calculations;
+  onboardingRows?: OnboardingRow[];
 }
 
-export default function SummarySection({ calculations }: SummarySectionProps) {
+export default function SummarySection({ calculations, onboardingRows = [] }: SummarySectionProps) {
   const metrics = [
     {
       label: 'Monthly Revenue',
@@ -68,6 +117,10 @@ export default function SummarySection({ calculations }: SummarySectionProps) {
           );
         })}
       </div>
+
+      {onboardingRows.length > 0 && (
+        <OnboardingServicesSummaryCard onboardingRows={onboardingRows} />
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center gap-3 mb-6">
