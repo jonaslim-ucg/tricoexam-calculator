@@ -2,9 +2,7 @@ import { Receipt, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { OperatingCost, AddOnFeature } from '../types/forecast';
 
-/** Cost-only add-ons are shown in Revenue section (Extra Storage & AI Image Packs); hide from this list to avoid duplicate editing */
-const COST_ONLY_ADDON_NAMES = ['Extra Storage (5GB pack)', 'Image Scans (5k pack)'];
-
+/** Storage & AI (Extra Storage, Image Scans) are also edited in Revenue section; their operating cost is included here in the total and list. */
 interface OperatingCostsSectionProps {
   scenarioId: string;
   operatingCosts: OperatingCost[];
@@ -193,9 +191,7 @@ export default function OperatingCostsSection({
         <div className="mt-6 pt-6 border-t border-slate-200">
           <h3 className="text-sm font-semibold text-slate-900 mb-3">Add-on Feature Costs</h3>
           <div className="space-y-2">
-            {addOnFeatures
-              .filter((f) => !COST_ONLY_ADDON_NAMES.includes(f.name))
-              .map((feature) => (
+            {addOnFeatures.map((feature) => (
               <div
                 key={feature.id}
                 className="grid grid-cols-4 gap-4 items-center p-3 bg-slate-50 rounded-lg"
