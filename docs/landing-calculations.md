@@ -1,6 +1,6 @@
 # Landing Screen Calculations
 
-This document describes all calculations visible on the dashboard (landing) screen, organized by section. The values are produced by `calculateMetrics()` in `src/utils/calculations.ts` and displayed in the Summary, Revenue, Operating Costs, Marketing Costs, and Charts sections.
+This document describes all calculations visible on the dashboard (landing) screen, organized by section. The values are produced by `calculateMetrics()` in `src/utils/calculations.ts` and displayed in the Summary cards, Onboarding Services Summary, Revenue, Operating Costs, Marketing Costs, and Charts sections. Monthly revenue includes pricing plans, revenue add-ons, tech support, plan add-on rows, surgical revenue, and onboarding revenue.
 
 ---
 
@@ -16,12 +16,20 @@ The first row shows four key metrics in cards.
 
 ```
 Monthly Revenue =
-  Σ (plan.price × plan.customers) for each pricing plan
-  + Σ (feature.price × feature.customers) for each add-on where feature.is_revenue = true
+  Σ (plan.price × plan.customers)                    [pricing plans]
+  + Σ (feature.price × feature.customers)             [revenue add-ons only]
+  + Σ (tier_price×customers + seat_addon_price×extra_seats)  [tech support rows]
+  + Σ (price × quantity)                             [plan add-on rows: staff/provider]
+  + Surgical revenue (tier rows + extras)
+  + Σ (price × customers)                            [onboarding rows]
 ```
 
 - **Pricing plans:** Sum over all plans of `price × customers`.
-- **Add-ons:** Only add-ons with `is_revenue === true` contribute; each adds `price × customers`.
+- **Add-ons:** Only add-ons with `is_revenue === true` and **not** in the cost-only list contribute. Cost-only add-ons ("Extra Storage (5GB pack)", "Image Scans (5k pack)") do not add to revenue; they only add to operating cost via `operating_cost_per_customer × customers`.
+- **Tech support:** Per row: `tier_price × customers + seat_addon_price × extra_seats`.
+- **Plan add-on rows:** Per row (additional staff / additional provider): `price × quantity`.
+- **Surgical:** Tier rows: `Σ (base_price + addon_price) × customers`; extras: `additional_provider_price × additional_provider_quantity + automation_price_per_1000 × automation_overage_thousands`.
+- **Onboarding:** Per row (session or bundle): `price × customers`. (Delivery/contractor cost is shown in the Onboarding Services Summary card but is not subtracted from this Monthly Revenue.)
 
 ---
 
@@ -125,6 +133,21 @@ Capital expenditure is the one-time amount for the scenario; it is subtracted on
 
 ---
 
+### 2.6 Onboarding Services Summary (card above Annual Projections)
+
+**Display:** "Onboarding Services Summary" card with four metrics: One-Time Revenue, Delivery Costs, Gross Profit, Margin.
+
+**Formulas:**
+
+- **One-Time Revenue:** `Σ (price × customers)` over all onboarding rows (sessions + bundles). Same as the onboarding contribution to Monthly Revenue in 1.1.
+- **Delivery Costs:** Sessions use a default delivery cost per customer (e.g. 125) and bundles another (e.g. 375), unless the row has a `delivery_cost` override: `Σ (delivery_cost × customers)` per row (with default when `delivery_cost` is unset).
+- **Gross Profit:** `One-Time Revenue − Delivery Costs`.
+- **Margin:** `(Gross Profit / One-Time Revenue) × 100` when revenue > 0, else 0.
+
+This card is display-only for onboarding; it does not change Monthly Revenue or Monthly Expenses in the main summary.
+
+---
+
 ## 3. Underlying inputs for summary and annual
 
 These are not shown as separate cards but feed into **Monthly Expenses**, **Monthly Profit**, and all annual figures.
@@ -170,15 +193,9 @@ Note: The plan price is resolved from the scenario's pricing plans (by plan name
 
 The "Monthly Revenue" section shows:
 
-- **Total Monthly Revenue:** Same value as **Monthly Revenue** in section 1.1, computed as:
+- **Total Monthly Revenue:** Same value as **Monthly Revenue** in section 1.1. It includes all sources listed in 1.1: pricing plans, revenue add-ons (excluding cost-only add-ons), tech support, plan add-on rows, surgical revenue, and onboarding revenue.
 
-  ```
-  Total Monthly Revenue =
-    Σ (plan.price × plan.customers) +
-    Σ (feature.price × feature.customers) for add-ons with is_revenue = true
-  ```
-
-- Per-plan and per–add-on lines use the same building blocks: `price × customers` for each plan/feature.
+- The section breaks down revenue by plan, add-on, tech support, plan add-ons, surgical, and onboarding where applicable; each uses the same building blocks (e.g. `price × customers` or `price × quantity`) as in **1.1**.
 
 ---
 
@@ -199,7 +216,7 @@ This total is the same as **Monthly Operating Expenses** used in the summary and
 The "Marketing Costs" section shows:
 
 - **Total Monthly Marketing:** Same as **Monthly Marketing Expenses** in section 3.2:
-  - For each marketing cost: `plan_price × customers × (rate / 100)` with plan prices 99 / 382 / 655 by plan name.
+  - For each marketing cost: `plan_price × customers × (rate / 100)`; plan price is resolved by matching the cost’s plan name to the scenario’s pricing plans.
   - Sum over all marketing cost items.
 
 ---
@@ -274,13 +291,13 @@ The amounts shown are **Monthly Operating Expenses** and **Monthly Marketing Exp
 
 | Metric                                 | Source / formula                                                                |
 | -------------------------------------- | ------------------------------------------------------------------------------- |
-| Monthly Revenue                        | Plans (price×customers) + revenue add-ons (price×customers)                     |
+| Monthly Revenue                        | Plans + revenue add-ons (excl. cost-only) + tech support + plan add-ons + surgical + onboarding (see 1.1) |
 | Monthly Operating Expenses             | Fixed/variable operating costs + add-on (operating_cost_per_customer×customers) |
-| Monthly Marketing Expenses             | Σ plan_price×customers×(rate/100); plan price by name (99/382/655)              |
+| Monthly Marketing Expenses             | Σ plan_price×customers×(rate/100); plan price by name from scenario pricing plans |
 | Total Monthly Expenses                 | Operating + Marketing                                                           |
 | Monthly Profit                         | Revenue − Total Monthly Expenses                                                |
 | Break-even Months                      | Capital Expenditure / Monthly Profit (or 0)                                     |
 | Annual Revenue / Operating / Marketing | Monthly × 12                                                                    |
 | Annual Profit (Net Annual Cash Flow)   | Annual Revenue − Annual Operating − Annual Marketing − Capital Expenditure      |
 
-All numbers shown on the landing screen derive from these calculations and the current scenario’s plans, add-ons, operating costs, marketing costs, and capital expenditure.
+All numbers shown on the landing screen derive from these calculations and the current scenario’s plans, add-ons, operating costs, marketing costs, tech support rows, plan add-on rows, surgical data, onboarding rows, and capital expenditure.
